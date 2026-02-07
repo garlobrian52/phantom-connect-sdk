@@ -26,7 +26,7 @@ export interface InjectedWalletInfo {
   providers?: WalletProviders;
   /** Reverse DNS identifier from EIP-6963 (for potential future matching with Wallet Standard) */
   rdns?: string;
-  discovery?: "standard" | "eip6963" | "phantom";
+  discovery?: "standard" | "eip6963" | "phantom" | "custom";
 }
 
 /**

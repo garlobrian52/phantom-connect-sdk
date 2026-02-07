@@ -44,17 +44,30 @@ describe("InjectedProvider", () => {
     const ethereumListeners = new Map<string, Set<(...args: any[]) => void>>();
 
     // Create the default mock phantom object
+    const mockPublicKey = "GfJ4JhQXbUMwh7x8e7YFHC3yLz5FJGvjurQrNxFWkeYH";
     mockPhantomObject = {
       extension: {
         isInstalled: () => true,
       },
       solana: {
-        connect: jest.fn().mockResolvedValue("GfJ4JhQXbUMwh7x8e7YFHC3yLz5FJGvjurQrNxFWkeYH"),
-        disconnect: jest.fn(),
+        connect: jest.fn().mockImplementation(() => {
+          // Simulate provider updating state after connect
+          mockPhantomObject.solana.isConnected = true;
+          mockPhantomObject.solana.publicKey = mockPublicKey;
+          return Promise.resolve(undefined);
+        }),
+        disconnect: jest.fn().mockImplementation(() => {
+          // Simulate provider updating state after disconnect
+          mockPhantomObject.solana.isConnected = false;
+          mockPhantomObject.solana.publicKey = null;
+          return Promise.resolve(undefined);
+        }),
         getAccount: jest.fn(),
         signMessage: jest.fn().mockResolvedValue({ signature: "mock-signature" }),
         signIn: jest.fn(),
         signAndSendTransaction: jest.fn().mockResolvedValue({ signature: "mock-transaction-signature" }),
+        isConnected: false as boolean,
+        publicKey: null,
         // Support both old addEventListener (for browser-injected-sdk) and new .on()/.off() (for chain wrappers)
         addEventListener: jest.fn((event: string, callback: (...args: any[]) => void) => {
           if (!solanaListeners.has(event)) {
@@ -193,10 +206,14 @@ describe("InjectedProvider", () => {
         addressTypes: [AddressType.solana],
       });
 
-      // Mock ISolanaChain adapter - connect() returns { publicKey: string }
+      // Mock ISolanaChain adapter - connect() updates provider state
+      const testPublicKey = "GfJ4JhQXbUMwh7x8e7YFHC3yLz5FJGvjurQrNxFWkeYH";
       const mockSolanaChain = {
-        connect: jest.fn().mockResolvedValue({
-          publicKey: "GfJ4JhQXbUMwh7x8e7YFHC3yLz5FJGvjurQrNxFWkeYH",
+        connect: jest.fn().mockImplementation(() => {
+          // Simulate provider updating state after connect
+          mockSolanaChain.isConnected = true;
+          mockSolanaChain.publicKey = testPublicKey;
+          return Promise.resolve(undefined);
         }),
         disconnect: jest.fn(),
         signMessage: jest.fn(),
@@ -206,11 +223,10 @@ describe("InjectedProvider", () => {
         signAndSendAllTransactions: jest.fn(),
         switchNetwork: jest.fn(),
         getPublicKey: jest.fn(),
-        isConnected: jest.fn().mockReturnValue(false),
+        isConnected: false as boolean,
         on: jest.fn(),
         off: jest.fn(),
         publicKey: null,
-        connected: false,
       };
 
       const internal = provider as any;
