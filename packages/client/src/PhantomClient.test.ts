@@ -909,3 +909,170 @@ describe("PhantomClient Spending Limits Integration", () => {
     });
   });
 });
+
+describe("PhantomClient null safety in payment processing", () => {
+  let client: PhantomClient;
+  let mockAxiosPost: jest.Mock;
+  let mockKmsPost: jest.Mock;
+
+  beforeEach(() => {
+    mockAxiosPost = jest.fn();
+    const mockAxiosInstance = {
+      post: mockAxiosPost,
+      interceptors: {
+        request: { use: jest.fn() },
+      },
+    };
+
+    (axios.create as jest.Mock).mockReturnValue(mockAxiosInstance);
+
+    client = new PhantomClient({
+      apiBaseUrl: "https://api.phantom.app",
+      organizationId: "test-org-id",
+    });
+
+    mockKmsPost = jest.fn();
+
+    Object.defineProperty(client, "kmsApi", {
+      value: { postKmsRpc: mockKmsPost },
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("signTransaction parameter validation", () => {
+    it("should throw when walletId is empty", async () => {
+      await expect(
+        client.signTransaction({
+          walletId: "",
+          transaction: "tx",
+          networkId: NetworkId.SOLANA_MAINNET,
+          account: "UserAccount123",
+        }),
+      ).rejects.toThrow("walletId is required to sign a transaction");
+    });
+
+    it("should throw when transaction is empty", async () => {
+      await expect(
+        client.signTransaction({
+          walletId: "wallet-123",
+          transaction: "",
+          networkId: NetworkId.SOLANA_MAINNET,
+          account: "UserAccount123",
+        }),
+      ).rejects.toThrow("transaction is required to sign a transaction");
+    });
+  });
+
+  describe("KMS API response null safety", () => {
+    it("should throw when KMS API returns null result", async () => {
+      mockAxiosPost.mockResolvedValueOnce({
+        data: { transaction: "prepared-tx" },
+      });
+
+      mockKmsPost.mockResolvedValueOnce({
+        data: null,
+      });
+
+      await expect(
+        client.signTransaction({
+          walletId: "wallet-123",
+          transaction: "tx",
+          networkId: NetworkId.SOLANA_MAINNET,
+          account: "UserAccount123",
+        }),
+      ).rejects.toThrow("Invalid response from signing service: missing result");
+    });
+
+    it("should throw when KMS API result is missing", async () => {
+      mockAxiosPost.mockResolvedValueOnce({
+        data: { transaction: "prepared-tx" },
+      });
+
+      mockKmsPost.mockResolvedValueOnce({
+        data: { someOtherField: "value" },
+      });
+
+      await expect(
+        client.signTransaction({
+          walletId: "wallet-123",
+          transaction: "tx",
+          networkId: NetworkId.SOLANA_MAINNET,
+          account: "UserAccount123",
+        }),
+      ).rejects.toThrow("Invalid response from signing service: missing result");
+    });
+
+    it("should throw when KMS API result is missing transaction", async () => {
+      mockAxiosPost.mockResolvedValueOnce({
+        data: { transaction: "prepared-tx" },
+      });
+
+      mockKmsPost.mockResolvedValueOnce({
+        data: { result: { publicKey: "pk" } },
+      });
+
+      await expect(
+        client.signTransaction({
+          walletId: "wallet-123",
+          transaction: "tx",
+          networkId: NetworkId.SOLANA_MAINNET,
+          account: "UserAccount123",
+        }),
+      ).rejects.toThrow("Invalid response from signing service: missing transaction");
+    });
+
+    it("should throw when EVM KMS API returns null result", async () => {
+      mockKmsPost.mockResolvedValueOnce({
+        data: null,
+      });
+
+      await expect(
+        client.signTransaction({
+          walletId: "wallet-123",
+          transaction: "0x1234",
+          networkId: NetworkId.ETHEREUM_MAINNET,
+        }),
+      ).rejects.toThrow("Invalid response from signing service: missing result");
+    });
+  });
+
+  describe("createWallet null safety", () => {
+    it("should throw when wallet service returns null response", async () => {
+      mockKmsPost.mockResolvedValueOnce({
+        data: null,
+      });
+
+      await expect(client.createWallet("Test Wallet")).rejects.toThrow(
+        "Failed to create wallet: Invalid response from wallet service: missing result",
+      );
+    });
+
+    it("should throw when wallet service response is missing walletId", async () => {
+      mockKmsPost.mockResolvedValueOnce({
+        data: { result: { walletName: "Test Wallet" } },
+      });
+
+      await expect(client.createWallet("Test Wallet")).rejects.toThrow(
+        "Failed to create wallet: Invalid response from wallet service: missing walletId",
+      );
+    });
+
+    it("should return empty addresses when accounts response is missing result", async () => {
+      mockKmsPost
+        .mockResolvedValueOnce({
+          data: { result: { walletId: "wallet-123", walletName: "Test Wallet" } },
+        })
+        .mockResolvedValueOnce({
+          data: null,
+        });
+
+      const result = await client.createWallet("Test Wallet");
+      expect(result.walletId).toBe("wallet-123");
+      expect(result.addresses).toEqual([]);
+    });
+  });
+});
