@@ -179,7 +179,14 @@ export class PhantomClient {
       } as any;
 
       const response = await this.kmsApi.postKmsRpc(request);
-      const walletResult = (response.data as any).result as ExternalKmsWallet;
+      const walletResponseData = response.data as any;
+      if (!walletResponseData || !walletResponseData.result) {
+        throw new Error("Invalid response from wallet service: missing result");
+      }
+      const walletResult = walletResponseData.result as ExternalKmsWallet;
+      if (!walletResult.walletId) {
+        throw new Error("Invalid response from wallet service: missing walletId");
+      }
 
       // Wallet created successfully
 
@@ -204,7 +211,8 @@ export class PhantomClient {
       const accountsResponse = await this.kmsApi.postKmsRpc(requestAccounts);
 
       // Accounts fetched successfully
-      const accountsResult = (accountsResponse.data as any).result as (ExternalDerivedAccount & { address: string })[];
+      const accountsResponseData = accountsResponse.data as any;
+      const accountsResult = (accountsResponseData?.result ?? []) as (ExternalDerivedAccount & { address: string })[];
       return {
         walletId: walletResult.walletId,
         addresses: accountsResult.map(account => ({
@@ -332,6 +340,14 @@ export class PhantomClient {
         throw new Error("organizationId is required to sign a transaction");
       }
 
+      if (!walletId) {
+        throw new Error("walletId is required to sign a transaction");
+      }
+
+      if (!encodedTransaction) {
+        throw new Error("transaction is required to sign a transaction");
+      }
+
       // SubmissionConfig is used to: 1) submit the transaction onchain, 2) derive spending limits
       const submissionConfig = deriveSubmissionConfig(networkIdParam);
 
@@ -395,8 +411,15 @@ export class PhantomClient {
           "X-Rpc-Method": methodName,
         },
       });
-      const result = (response.data as any).result as SignedTransactionWithPublicKey;
-      const rpcSubmissionResult = (response.data as any)["rpc_submission_result"];
+      const responseData = response.data as any;
+      if (!responseData || !responseData.result) {
+        throw new Error("Invalid response from signing service: missing result");
+      }
+      const result = responseData.result as SignedTransactionWithPublicKey;
+      if (!result.transaction) {
+        throw new Error("Invalid response from signing service: missing transaction");
+      }
+      const rpcSubmissionResult = responseData["rpc_submission_result"];
       const hash = includeSubmissionConfig && rpcSubmissionResult ? rpcSubmissionResult.result : null;
 
       return {
