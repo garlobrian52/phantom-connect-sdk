@@ -1,8 +1,8 @@
 import type { Phantom } from "@phantom/browser-sdk";
 
 /**
- * Asserts that the Phantom instance has Solana configured and narrows the type.
- * After calling this function, TypeScript will know that phantom.solana is defined.
+ * Asserts that the Phantom instance has the extension plugin configured and narrows the type.
+ * After calling this function, TypeScript will know that phantom.extension is defined.
  */
 export function assertExtensionConfigured(
   phantom: Phantom | undefined,
