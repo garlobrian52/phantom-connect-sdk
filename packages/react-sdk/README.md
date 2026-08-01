@@ -525,9 +525,6 @@ await connect({
 
 The SDK provides an `isLoading` state to track when initialization and autoconnect are in progress. This is useful for showing loading states before your app is ready.
 
-<<<<<<< HEAD
-The `useIsInstalled` hook provides a variable `isInstalled` to check whether the phantom extension is installed
-=======
 ```tsx
 import { useConnect, usePhantom } from "@phantom/react-sdk";
 
@@ -1386,4 +1383,3 @@ interface DebugMessage {
 ```
 
 For more details and examples, see the [@phantom/browser-sdk documentation](../browser-sdk/README.md).
->>>>>>> origin/main
