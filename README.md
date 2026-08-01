@@ -1,133 +1,311 @@
-# Phantom Wallet SDK Monorepo
+# Phantom Connect SDK
 
-This monorepo contains the Phantom Wallet SDKs and demo applications.
+A comprehensive suite of SDKs for integrating Phantom Connect across different platforms and use cases.
 
-## ⚠️ Deprecation Notice
+## Getting Started
 
-**@phantom/wallet-sdk** (the embedded wallet SDK) is now deprecated. Future development and support will focus on the following packages:
+- Create your app in [Phantom Portal](https://docs.phantom.com/phantom-portal/portal) and obtain your `appId`.
+- Choose one of our SDKs: React, React Native, Browser, Server.
 
-- [@phantom/browser-sdk](https://www.npmjs.com/package/@phantom/browser-sdk): Core browser SDK for Phantom wallet integration (no UI components).
-- [@phantom/react-sdk](https://www.npmjs.com/package/@phantom/react-sdk): React wrapper for the browser SDK, providing hooks and components for easy integration.
+## SDK Overview
 
-## Packages
+This repository contains multiple SDKs for different integration needs, prioritized by ease of use:
 
-- **[@phantom/browser-sdk](./packages/browser-sdk/README.md)**: Core browser SDK for Phantom wallet functionality. [NPM](https://www.npmjs.com/package/@phantom/browser-sdk)
-- **[@phantom/react-sdk](./packages/react-sdk/README.md)**: React hooks and components for Phantom wallet. [NPM](https://www.npmjs.com/package/@phantom/react-sdk)
-- **[@phantom/server-sdk](./packages/server-sdk/README.md)**: Server-side SDK for secure wallet management and transaction signing. [NPM](https://www.npmjs.com/package/@phantom/server-sdk)
-- **@phantom/wallet-sdk (DEPRECATED)**: Embedded wallet SDK with UI (no longer maintained).
+### React SDK
+
+**[@phantom/react-sdk](./packages/react-sdk/README.md)** - React hooks and components for Phantom integration with built-in UI components.
+
+```tsx
+import {
+  PhantomProvider,
+  ConnectButton,
+  usePhantom,
+  useSolana,
+  useEthereum,
+  AddressType,
+  darkTheme,
+  lightTheme,
+} from "@phantom/react-sdk";
+
+// App wrapper with provider and theme configuration
+<PhantomProvider
+  config={{
+    providers: ["google", "apple", "phantom", "injected"], // Allowed auth providers
+    addressTypes: [AddressType.solana, AddressType.ethereum],
+    appId: "your-app-id", // Required when using embedded providers (google, apple, phantom, etc.)
+    // Optional:
+    // apiBaseUrl: "https://api.phantom.app/v1/wallets",
+  }}
+  theme={darkTheme} // or lightTheme, or custom theme
+  appIcon="https://your-app.com/icon.png"
+  appName="Your App Name"
+>
+  <App />
+</PhantomProvider>;
+
+// Simple connection with ConnectButton component
+function WalletComponent() {
+  const { isConnected, addresses } = usePhantom();
+
+  // ConnectButton handles the entire connection flow with built-in modal
+  return (
+    <div>
+      <ConnectButton fullWidth />
+
+      {isConnected && (
+        <div>
+          <p>Connected addresses:</p>
+          {addresses.map(addr => (
+            <p key={addr.address}>
+              {addr.addressType}: {addr.address}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Advanced usage with chain-specific operations
+function AdvancedComponent() {
+  const { solana, isAvailable: isSolanaAvailable } = useSolana();
+  const { ethereum, isAvailable: isEthereumAvailable } = useEthereum();
+
+  const signMessages = async () => {
+    const solanaSignature = await solana.signMessage("Hello Solana!");
+    const accounts = await ethereum.getAccounts();
+    const ethSignature = await ethereum.signPersonalMessage("Hello Ethereum!", accounts[0]);
+  };
+
+  return <button onClick={signMessages}>Sign Messages</button>;
+}
+```
+
+### Browser SDK - **For Vanilla JS/TS**
+
+**[@phantom/browser-sdk](./packages/browser-sdk/README.md)** - Core browser SDK with dual provider support and chain-specific APIs.
+
+```typescript
+import { BrowserSDK, AddressType } from "@phantom/browser-sdk";
+
+const sdk = new BrowserSDK({
+  providers: ["injected", "google"],
+  addressTypes: [AddressType.solana, AddressType.ethereum],
+  appId: "your-app-id",
+});
+
+// Connect through SDK (provider parameter is required)
+const { addresses } = await sdk.connect({ provider: "injected" });
+
+// Chain-specific operations
+const solanaSignature = await sdk.solana.signMessage("Hello Solana!");
+const ethResult = await sdk.ethereum.sendTransaction({
+  to: "0x742d35Cc6634C0532925a3b8D4C8db86fB5C4A7E",
+  value: "1000000000000000000",
+  gas: "21000",
+});
+```
+
+### Server SDK - **For Backend Applications**
+
+**[@phantom/server-sdk](./packages/server-sdk/README.md)** - Server-side SDK for backend applications with built-in authentication.
+
+```typescript
+import { ServerSDK, NetworkId } from "@phantom/server-sdk";
+
+const sdk = new ServerSDK({
+  organizationId: process.env.ORGANIZATION_ID,
+  appId: process.env.APP_ID,
+  apiPrivateKey: process.env.PRIVATE_KEY,
+  apiBaseUrl: process.env.API_URL,
+});
+
+// Create wallet
+const wallet = await sdk.createWallet("User Wallet");
+
+// Sign messages
+const signature = await sdk.signMessage({
+  walletId: wallet.walletId,
+  message: "Hello from Phantom!",
+  networkId: NetworkId.SOLANA_MAINNET,
+});
+
+// Sign transactions - supports multiple formats
+// Solana Web3.js Transaction
+const solanaTransaction = new Transaction().add(/* instructions */);
+await sdk.signAndSendTransaction({
+  walletId: wallet.walletId,
+  transaction: solanaTransaction, // Native Solana transaction object
+  networkId: NetworkId.SOLANA_MAINNET,
+});
+
+// Ethereum/EVM transaction object
+const evmTransaction = {
+  to: "0x742d35Cc6634C0532925a3b8D4C8db86fB5C4A7E",
+  value: 1000000000000000000n,
+  data: "0x",
+};
+await sdk.signAndSendTransaction({
+  walletId: wallet.walletId,
+  transaction: evmTransaction, // Viem/Ethers transaction object
+  networkId: NetworkId.ETHEREUM_MAINNET,
+});
+
+// Raw bytes or hex strings
+await sdk.signAndSendTransaction({
+  walletId: wallet.walletId,
+  transaction: "0x01020304", // Hex string
+  networkId: NetworkId.ETHEREUM_MAINNET,
+});
+```
 
 ## Examples
 
 You can find example applications in the [`examples/`](./examples) folder:
 
+- [`examples/with-modal`](./examples/with-modal) - React SDK with ConnectButton and modal UI
 - [`examples/react-sdk-demo-app`](./examples/react-sdk-demo-app)
 - [`examples/browser-sdk-demo-app`](./examples/browser-sdk-demo-app)
-- [`examples/browser-embedded-sdk-demo-app`](./examples/browser-embedded-sdk-demo-app)
+- [`examples/react-native-sdk-demo-app`](./examples/react-native-sdk-demo-app)
+- [`examples/with-nextjs`](./examples/with-nextjs)
+- [`examples/with-wagmi`](./examples/with-wagmi/)
 
-## Quick Start
+## Architecture Overview
 
-### Using @phantom/browser-sdk
+Below is an explanation of how the different packages of this repository work together.
 
-```bash
-npm install @phantom/browser-sdk
-# or
-yarn add @phantom/browser-sdk
+### Entry Point Packages
+
+These are the main SDKs that developers use to integrate Phantom Wallet:
+
+#### **[@phantom/server-sdk](./packages/server-sdk/README.md)** - Backend SDK
+
+Server-side SDK for backend applications with built-in authentication. Depends on:
+
+- `@phantom/client` for API communication
+- `@phantom/api-key-stamper` for request authentication
+
+#### **[@phantom/react-sdk](./packages/react-sdk/README.md)** - React Hooks & Components
+
+Thin wrapper over `@phantom/browser-sdk` that provides React hooks, context providers, and pre-built UI components for Phantom integration.
+
+**Features:**
+
+- React hooks: `usePhantom`, `useConnect`, `useDisconnect`, `useSolana`, `useEthereum`
+- `ConnectButton` component - Ready-to-use button that handles the complete connection flow
+- Built-in connection modal with authentication providers (Google, Apple, Phantom Login, Browser Extension)
+- Theme system with `darkTheme` and `lightTheme` presets
+- Automatic mobile deeplink support for Phantom mobile app
+
+#### **[@phantom/browser-sdk](./packages/browser-sdk/README.md)** - Vanilla JS/TS SDK
+
+Core browser SDK supporting both injected (extension) and embedded (non-custodial) providers. Depends on:
+
+- `@phantom/embedded-provider-core` for embedded wallet functionality
+- `@phantom/browser-injected-sdk` for extension integration
+- `@phantom/client` for API communication
+- `@phantom/indexed-db-stamper` for secure browser-based authentication
+
+#### **[@phantom/react-native-sdk](./packages/react-native-sdk/README.md)** - Mobile SDK
+
+SDK for React Native and Expo applications. Depends on:
+
+- `@phantom/embedded-provider-core` for embedded wallet functionality
+- `@phantom/client` for API communication
+- Platform-specific secure storage for authentication
+
+### Core Internal Packages
+
+These are the foundational packages that power the entry point SDKs:
+
+#### **[@phantom/embedded-provider-core](./packages/embedded-provider-core/README.md)** - Embedded Wallet Orchestration
+
+Platform-agnostic core that orchestrates authentication flows for embedded wallets and provides signing interfaces. This is the heart of the embedded wallet functionality, handling:
+
+- Wallet creation and authentication
+- Multi-chain signing interfaces (Solana, Ethereum, etc.)
+- Session management
+- Event handling
+
+#### **[@phantom/browser-injected-sdk](./packages/browser-injected-sdk/README.md)** - Extension Integration
+
+Interfaces with the Phantom browser extension, detecting its presence and providing a unified API to communicate with the injected provider.
+
+#### **[@phantom/client](./packages/client/README.md)** - HTTP API Client
+
+HTTP wrapper for interfacing with the Phantom API. All requests must be cryptographically signed (stamped) using one of the stamper packages.
+
+#### **[@phantom/api-key-stamper](./packages/api-key-stamper/README.md)** - Server Authentication
+
+Stamps API requests with cryptographic signatures using private API keys. Used by `@phantom/server-sdk` for backend authentication.
+
+#### **[@phantom/indexed-db-stamper](./packages/indexed-db-stamper/README.md)** - Browser Authentication
+
+Stamps API requests using non-extractable cryptographic keys stored in IndexedDB. Used by `@phantom/browser-sdk` for secure browser-based authentication.
+
+### Supporting Utility Packages
+
+#### **[@phantom/chain-interfaces](./packages/chain-interfaces/README.md)** - Multi-Chain Type Definitions
+
+TypeScript interfaces and types for different blockchain networks (Solana, Ethereum, etc.).
+
+#### **[@phantom/sdk-types](./packages/sdk-types/README.md)** - Shared Type Definitions
+
+Common TypeScript types used across all SDK packages.
+
+#### **[@phantom/constants](./packages/constants/README.md)** - Shared Constants
+
+Environment URLs, configuration values, and other constants used across packages.
+
+#### **[@phantom/parsers](./packages/parsers/README.md)** - Data Parsers
+
+Utilities for parsing and transforming blockchain data formats.
+
+#### **[@phantom/crypto](./packages/crypto/README.md)** - Cryptographic Utilities
+
+Platform-agnostic cryptographic operations (signing, hashing, key generation).
+
+#### **[@phantom/base64url](./packages/base64url/README.md)** - URL-Safe Base64
+
+Encoding/decoding utilities for URL-safe base64 operations.
+
+#### **[@phantom/utils](./packages/utils/README.md)** - General Utilities
+
+Miscellaneous utility functions used across packages.
+
+### Package Dependency Flow
+
+```
+Frontend Entry Points:
+  react-sdk → browser-sdk → embedded-provider-core → client → (api-key-stamper | indexed-db-stamper)
+                                     → browser-injected-sdk
+
+Backend Entry Point:
+  server-sdk → client → api-key-stamper
+
+Mobile Entry Point:
+  react-native-sdk → embedded-provider-core → client → api-key-stamper
 ```
 
-```typescript
-import { createPhantom } from "@phantom/browser-sdk";
-import { createSolanaPlugin } from "@phantom/browser-sdk/solana";
+## Network Support
 
-const phantom = createPhantom({
-  plugins: [createSolanaPlugin()],
-});
+Phantom SDKs support multiple blockchain networks across Solana and EVM chains.
 
-// Example: connect to wallet
-const connect = async () => {
-  const result = await phantom.solana.connect();
-  console.log("Connected address:", result.address);
-};
-```
+### Supported Blockchains
 
-See the [@phantom/browser-sdk README](./packages/browser-sdk/README.md) for more details and API reference.
+Currently our libraries only fully support Solana.
 
-### Using @phantom/react-sdk
+**Solana**: Mainnet, Devnet, Testnet
 
-```bash
-npm install @phantom/react-sdk @phantom/browser-sdk
-# or
-yarn add @phantom/react-sdk @phantom/browser-sdk
-```
+**Coming Soon**:
 
-```tsx
-import React from "react";
-import { PhantomProvider, useConnect } from "@phantom/react-sdk";
-import { createSolanaPlugin } from "@phantom/browser-sdk/solana";
-
-function App() {
-  return (
-    <PhantomProvider config={{ plugins: [createSolanaPlugin()] }}>
-      <WalletComponent />
-    </PhantomProvider>
-  );
-}
-
-function WalletComponent() {
-  const { connect } = useConnect();
-  const handleConnect = async () => {
-    try {
-      const connectedAccount = await connect();
-      console.log("Wallet connected:", connectedAccount?.publicKey?.toString());
-    } catch (error) {
-      console.error("Connection failed:", error);
-    }
-  };
-  return <button onClick={handleConnect}>Connect to Solana</button>;
-}
-```
-
-See the [@phantom/react-sdk README](./packages/react-sdk/README.md) for more details and API reference.
-
-## Development
-
-```bash
-# Install dependencies
-yarn install
-
-# Build all packages
-yarn build
-```
-
-### Developing locally
-
-If you wanna contribute to this SDK and develop locally, we recommend using [`yalc`](https://github.com/wclr/yalc)
-
-```
-# Install yalc globally
-npm install -g yalc
-
-# In your monorepo package
-cd packages/your-package
-yalc publish
-
-# In your external project
-yalc add your-package-name
-npm install
-```
-
-to update after changes:
-
-```
-# In monorepo package
-yalc push
-
-# Or in external project
-yalc update
-```
-
-Don't forget to build changes: `yarn build`
-
-NOTE: You can run this automatically using `yarn watch` in the root of this repo
+- Ethereum (Mainnet, Sepolia)
+- Polygon (Mainnet, Amoy)
+- Base (Mainnet, Sepolia)
+- Arbitrum (One, Sepolia)
+- Monad (Mainnet, Testnet)
+- Bitcoin
+- Sui
 
 ## Give Feedback
 
@@ -138,3 +316,11 @@ Phantom SDKs are in active development and will be prioritizing features request
 The embedded wallet is a beta version, and Phantom will not be liable for any losses or damages suffered by you or your end users.
 
 Any suggestions, enhancement requests, recommendations, or other feedback provided by you regarding the embedded wallet will be the exclusive property of Phantom. By using this beta version and providing feedback, you agree to assign any rights in that feedback to Phantom.
+
+## Releasing a new version
+
+This project uses the command `yarn changeset` to generate new versions for the different packages.
+
+In your pull request, run the command `yarn changeset`, select which packages are affected and commit the generated files.
+
+After this pull request is merged a new one will be generated automatically with the release. The CI system will release the new versions upon merge.

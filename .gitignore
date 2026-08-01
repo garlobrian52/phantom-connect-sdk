@@ -24,3 +24,9 @@ node_modules
 _release
 **/_release
 **/.env
+
+# Ignore coverage directory
+coverage
+
+# Turborepo
+.turbo

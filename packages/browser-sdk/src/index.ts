@@ -1,29 +1,52 @@
-import { type Extension } from "./extension/plugin";
-import { type Solana } from "./solana/plugin";
-import { type AutoConfirmPlugin } from "./auto-confirm/plugin";
+// Main SDK
+export { BrowserSDK } from "./BrowserSDK";
 
-export type Plugin<T> = {
-  name: string;
-  create: () => T;
-};
+// Chain interfaces (from shared package)
+export type { ISolanaChain, IEthereumChain, EthTransactionRequest } from "@phantom/chain-interfaces";
 
-export type CreatePhantomConfig = {
-  plugins?: Plugin<Solana | Extension | AutoConfirmPlugin>[];
-};
+// Types
+export * from "./types";
 
-// Base interface that plugins will extend via declaration merging
-export interface Phantom {}
+// Debug system
+export { debug, DebugLevel, DebugCategory } from "./debug";
+export type { DebugMessage, DebugCallback } from "./debug";
 
-/**
- * Creates a Phantom instance with the provided plugins.
- * Each plugin extends the Phantom interface via declaration merging.
- */
-export function createPhantom({ plugins = [] }: CreatePhantomConfig): Phantom {
-  const phantom: Record<string, unknown> = {};
+// Utility functions
+export {
+  detectBrowser,
+  parseBrowserFromUserAgent,
+  getPlatformName,
+  getBrowserDisplayName,
+  isMobileDevice,
+} from "./utils/browser-detection";
+export type { BrowserInfo } from "./utils/browser-detection";
 
-  for (const plugin of plugins) {
-    phantom[plugin.name] = plugin.create();
-  }
+export { getDeeplinkToPhantom } from "./utils/deeplink";
 
-  return phantom as unknown as Phantom;
-}
+// Extension detection
+export { waitForPhantomExtension } from "./waitForPhantomExtension";
+export { isPhantomLoginAvailable } from "./isPhantomLoginAvailable";
+
+// Re-export useful types from constants and client
+export { NetworkId } from "@phantom/constants";
+export { AddressType } from "@phantom/client";
+
+// Re-export auto-confirm types
+export type {
+  AutoConfirmEnableParams,
+  AutoConfirmResult,
+  AutoConfirmSupportedChainsResult,
+} from "@phantom/browser-injected-sdk/auto-confirm";
+
+// Re-export event types for typed event handlers
+export type {
+  EmbeddedProviderEvent,
+  ConnectEventData,
+  ConnectStartEventData,
+  ConnectErrorEventData,
+  DisconnectEventData,
+  EmbeddedProviderEventMap,
+  EventCallback,
+} from "@phantom/embedded-provider-core";
+
+export type { InjectedWalletInfo, InjectedWalletId } from "./wallets/registry";

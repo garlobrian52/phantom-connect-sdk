@@ -1,12 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist/esm",
-    "moduleResolution": "bundler",
+    "outDir": "dist",
     "rootDir": "src",
-    "lib": ["dom", "esnext"],
-    "types": ["node", "jest"],
-    "isolatedModules": true
+    "lib": ["ES2022", "DOM"],
+    "moduleResolution": "bundler"
   },
-  "include": ["src/**/*", "src/**/*.test.ts", "src/**/*.spec.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["_release", "node_modules", "dist", "**/*.test.ts"],
+  "skipLibCheck": true
 }
